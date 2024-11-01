@@ -4,6 +4,7 @@ using FlexTool.Entities;
 using FlexTool.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
+using FileIO = System.IO.File;
 
 namespace FlexTool.Controllers
 {
@@ -12,10 +13,12 @@ namespace FlexTool.Controllers
     public class HomeController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public HomeController(ApplicationDbContext context)
+        public HomeController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         #region Deferror
@@ -36,15 +39,30 @@ namespace FlexTool.Controllers
                 return NotFound($"Deferror với ErrNum {request.ErrNum} không tồn tại.");
             }
 
-            var test = EscapeSingleQuotes(deferror.EnErrDesc);
-
-            var contentBuilder = this.BuildContentDeferror(deferror);
+            var contentBuilder = BuildContentDeferror(deferror);
 
             var content = Encoding.UTF8.GetBytes(contentBuilder.ToString());
             var contentType = "application/octet-stream";
-            var fileName = $"deferror_{deferror.ErrNum}.sql";
+            var fileName = $"DEFERROR.{deferror.ErrNum}.sql";
 
-            return File(content, contentType, fileName);
+            if (request.IsUploadGit != true)
+            {
+                return File(content, contentType, fileName);
+            }
+
+            var baseFolderPath = _configuration["ConfigPath:DatabaseFolder"];
+            var folderPath = Path.Combine(baseFolderPath, "1_parameter", "DEFERROR");
+
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+
+            var filePath = Path.Combine(folderPath, fileName);
+
+            await FileIO.WriteAllTextAsync(filePath, contentBuilder.ToString(), Encoding.UTF8);
+
+            return Ok(Result.Success());
         }
 
         private StringBuilder BuildContentDeferror(Deferror deferror)
