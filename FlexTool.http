@@ -1,0 +1,6 @@
+@FlexTool_HostAddress = http://localhost:5108
+
+GET {{FlexTool_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
